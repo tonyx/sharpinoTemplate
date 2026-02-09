@@ -60,9 +60,5 @@ type TodoManager (messageSenders: MessageSenders, eventStore: IEventStore<string
                 return 
                     todos 
                     |>> snd 
-                    |> List.map (fun x -> x:?> Todo)
-                    // next release the cast will not be needed anymore
             }
-
-
 

@@ -11,12 +11,12 @@ open System
         | Completed of DateTime
 
     type Todo =
-        { Id: TodoId
+        { TodoId: TodoId
           Text: string
           State: State }
 
         static member New text =
-            { Id = TodoId.New
+            { TodoId = TodoId.New
               Text = text
               State = Started DateTime.Now }
 
@@ -47,6 +47,7 @@ open System
                     }
             }
 
+        member this.Id = this.TodoId.Value
         static member SnapshotsInterval = 50
         static member StorageName = "_Todo"
         static member Version = "_01"
@@ -59,9 +60,5 @@ open System
             with
                 | ex -> Error ex.Message
         
-        interface Aggregate<string> with
-            member this.Id = this.Id.Value
-            member this.Serialize = this.Serialize
-
         
 
