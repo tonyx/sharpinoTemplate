@@ -1,4 +1,4 @@
-\restrict aZJsjCDI9XrcOq8VJJwkZoYFDlWdmr18iDkTwBYxYMteJ7gmBlliWFZouBfmcag
+\restrict 2EJPtYGjIeZ1RoBX1k9nWZpdU3qP3Td1e6cYGPwktoRx8QsU7utyeM73CRnrtgz
 
 -- Dumped from database version 15.15 (Debian 15.15-1.pgdg13+1)
 -- Dumped by pg_dump version 18.0
@@ -14,26 +14,6 @@ SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
-
---
--- Name: insert_01_todo_aggregate_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.insert_01_todo_aggregate_event_and_return_id(event_in text, aggregate_id uuid) RETURNS integer
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-inserted_id integer;
-    event_id integer;
-BEGIN
-    event_id := insert_01_Todo_event_and_return_id(event_in, aggregate_id);
-
-INSERT INTO aggregate_events_01_Todo(aggregate_id, event_id)
-VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
-return event_id;
-END;
-$$;
-
 
 --
 -- Name: insert_01_todo_event_and_return_id(text, uuid); Type: FUNCTION; Schema: public; Owner: -
@@ -53,17 +33,17 @@ $$;
 
 
 --
--- Name: insert_md_01_todo_aggregate_event_and_return_id(text, uuid, text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_md_01_todo_aggregate_event_and_return_id(text, uuid, integer, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.insert_md_01_todo_aggregate_event_and_return_id(event_in text, aggregate_id uuid, md text) RETURNS integer
+CREATE FUNCTION public.insert_md_01_todo_aggregate_event_and_return_id(event_in text, aggregate_id uuid, distance_from_latest_snapshot integer, md text) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 DECLARE
 inserted_id integer;
     event_id integer;
 BEGIN
-    event_id := insert_md_01_Todo_event_and_return_id(event_in, aggregate_id, md);
+    event_id := insert_md_01_Todo_event_and_return_id(event_in, aggregate_id, distance_from_latest_snapshot, md);
 
 INSERT INTO aggregate_events_01_Todo(aggregate_id, event_id)
 VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
@@ -73,17 +53,17 @@ $$;
 
 
 --
--- Name: insert_md_01_todo_event_and_return_id(text, uuid, text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: insert_md_01_todo_event_and_return_id(text, uuid, integer, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.insert_md_01_todo_event_and_return_id(event_in text, aggregate_id uuid, md text) RETURNS integer
+CREATE FUNCTION public.insert_md_01_todo_event_and_return_id(event_in text, aggregate_id uuid, distance_from_latest_snapshot integer, md text) RETURNS integer
     LANGUAGE plpgsql
     AS $$
 DECLARE
 inserted_id integer;
 BEGIN
-INSERT INTO events_01_Todo(event, aggregate_id, timestamp, md)
-VALUES(event_in::text, aggregate_id, now(), md) RETURNING id INTO inserted_id;
+INSERT INTO events_01_Todo(event, aggregate_id, distance_from_latest_snapshot, timestamp, md)
+VALUES(event_in::text, aggregate_id, distance_from_latest_snapshot, now(), md) RETURNING id INTO inserted_id;
 return inserted_id;
 END;
 $$;
@@ -126,6 +106,7 @@ CREATE TABLE public.events_01_todo (
     event text NOT NULL,
     published boolean DEFAULT false NOT NULL,
     "timestamp" timestamp without time zone NOT NULL,
+    distance_from_latest_snapshot integer,
     md text
 );
 
@@ -241,6 +222,13 @@ CREATE INDEX ix_01_events_todo_timestamp ON public.events_01_todo USING btree ("
 
 
 --
+-- Name: ix_01_snapshot_todo_aggregate_id_and_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_01_snapshot_todo_aggregate_id_and_id ON public.snapshots_01_todo USING btree (aggregate_id, id DESC);
+
+
+--
 -- Name: ix_01_snapshot_todo_event_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -281,7 +269,7 @@ ALTER TABLE ONLY public.snapshots_01_todo
 -- PostgreSQL database dump complete
 --
 
-\unrestrict aZJsjCDI9XrcOq8VJJwkZoYFDlWdmr18iDkTwBYxYMteJ7gmBlliWFZouBfmcag
+\unrestrict 2EJPtYGjIeZ1RoBX1k9nWZpdU3qP3Td1e6cYGPwktoRx8QsU7utyeM73CRnrtgz
 
 
 --

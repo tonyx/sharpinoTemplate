@@ -1,11 +1,15 @@
 -- migrate:up
 
+-- note: the name _Todo corresponds to the static member StorageName of the aggregate in the F# code, the version number _01 corresponds to the static member Version of the aggregate in the F# code.
+-- so this file format can targets any other aggregate by substituting the name _Todo and the version _01 with the StorageName and Version of the aggregate in the F# code.
+
 CREATE TABLE public.events_01_Todo (
                                           id integer NOT NULL,
                                           aggregate_id uuid NOT NULL,
                                           event text NOT NULL,
                                           published boolean NOT NULL DEFAULT false,
                                           "timestamp" timestamp without time zone NOT NULL,
+                                          distance_from_latest_snapshot integer,
                                           md text 
 );
 
@@ -65,6 +69,7 @@ ALTER TABLE ONLY public.aggregate_events_01_Todo
 create index ix_01_events_Todo_id on public.events_01_Todo(aggregate_id);
 create index ix_01_aggregate_events_Todo_id on public.aggregate_events_01_Todo(aggregate_id);
 create index ix_01_snapshot_Todo_id on public.snapshots_01_Todo(aggregate_id);
+create index ix_01_snapshot_Todo_aggregate_id_and_id on public.snapshots_01_Todo(aggregate_id, id DESC);
 create index ix_01_snapshot_Todo_event_id on public.snapshots_01_Todo(event_id);
 create index ix_01_events_Todo_timestamp on public.events_01_Todo("timestamp");
 create index ix_01_snapshots_Todo_timestamp on public.snapshots_01_Todo("timestamp");
@@ -89,6 +94,7 @@ $$;
 CREATE OR REPLACE FUNCTION insert_md_01_Todo_event_and_return_id(
     IN event_in text,
     IN aggregate_id uuid,
+    IN distance_from_latest_snapshot int,
     IN md text
 )
 RETURNS int
@@ -98,29 +104,9 @@ AS $$
 DECLARE
 inserted_id integer;
 BEGIN
-INSERT INTO events_01_Todo(event, aggregate_id, timestamp, md)
-VALUES(event_in::text, aggregate_id, now(), md) RETURNING id INTO inserted_id;
+INSERT INTO events_01_Todo(event, aggregate_id, distance_from_latest_snapshot, timestamp, md)
+VALUES(event_in::text, aggregate_id, distance_from_latest_snapshot, now(), md) RETURNING id INTO inserted_id;
 return inserted_id;
-END;
-$$;
-
-CREATE OR REPLACE FUNCTION insert_01_Todo_aggregate_event_and_return_id(
-    IN event_in text,
-    IN aggregate_id uuid 
-)
-RETURNS int
-    
-LANGUAGE plpgsql
-AS $$
-DECLARE
-inserted_id integer;
-    event_id integer;
-BEGIN
-    event_id := insert_01_Todo_event_and_return_id(event_in, aggregate_id);
-
-INSERT INTO aggregate_events_01_Todo(aggregate_id, event_id)
-VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
-return event_id;
 END;
 $$;
 
@@ -128,6 +114,7 @@ $$;
 CREATE OR REPLACE FUNCTION insert_md_01_Todo_aggregate_event_and_return_id(
     IN event_in text,
     IN aggregate_id uuid,
+    IN distance_from_latest_snapshot int,
     IN md text   
 )
 RETURNS int
@@ -138,13 +125,12 @@ DECLARE
 inserted_id integer;
     event_id integer;
 BEGIN
-    event_id := insert_md_01_Todo_event_and_return_id(event_in, aggregate_id, md);
+    event_id := insert_md_01_Todo_event_and_return_id(event_in, aggregate_id, distance_from_latest_snapshot, md);
 
 INSERT INTO aggregate_events_01_Todo(aggregate_id, event_id)
 VALUES(aggregate_id, event_id) RETURNING id INTO inserted_id;
 return event_id;
 END;
 $$;
-
 -- migrate:down
 
